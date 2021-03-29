@@ -82,6 +82,10 @@ test.tokens.dataframe <- as.data.frame(test.tokens.dataframe)
 test.labels <- as.factor(test.labels)
 train.labels <- as.factor(train.labels)
 library(C50)
-m <- C5.0(train.tokens.dataframe, train.labels, trials = 2)
+start.time <- Sys.time()
+m <- C5.0(train.tokens.dataframe, train.labels, trials = 5)
 pred <- predict(m, test.tokens.dataframe)
+total.time <- Sys.time() - start.time
+total.time
+
 CrossTable(pred, test.labels)
