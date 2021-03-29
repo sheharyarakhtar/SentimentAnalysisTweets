@@ -82,10 +82,16 @@ test.tokens.dataframe <- as.data.frame(test.tokens.dataframe)
 test.labels <- as.factor(test.labels)
 train.labels <- as.factor(train.labels)
 library(C50)
+error_cost <- matrix(c(0,1,4,2,0,2,4,1,0), nrow=3)
 start.time <- Sys.time()
-m <- C5.0(train.tokens.dataframe, train.labels, trials = 5)
+m <- C5.0(train.tokens.dataframe, train.labels, trials = 5, costs = error_cost)
 pred <- predict(m, test.tokens.dataframe)
 total.time <- Sys.time() - start.time
 total.time
 
 CrossTable(pred, test.labels)
+
+##trials with error cost
+#1 = .749 without and .731 with
+#5 = .709 without and .778 with
+#10 .777 with
