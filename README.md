@@ -1,2 +1,3 @@
 # SentimentAnalysisTweets
-Sentiment Analysis
+
+Classification of tweets using different algorithms
