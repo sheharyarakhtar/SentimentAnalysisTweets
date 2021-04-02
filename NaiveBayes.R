@@ -83,7 +83,7 @@ wordcloud(neutral$Tweet, max.words = 70, random.order = F)
 #Create a dictionary of the terms recurring most often in the training set
 #and remove the sparse terms from both datasets
 trainDTM <- DocumentTermMatrix(trainCorp)
-sms_dict<-findFreqTerms(trainDTM,5)
+sms_dict<-findFreqTerms(trainDTM,12)
 trainDTM<-DocumentTermMatrix(trainCorp,list(dictionary=sms_dict))
 testDTM<-DocumentTermMatrix(testCorp,list(dictionary=sms_dict))
 
