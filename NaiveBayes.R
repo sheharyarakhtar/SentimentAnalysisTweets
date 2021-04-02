@@ -1,48 +1,69 @@
-tweet_raw <- rbind(read.csv('train.csv'), read.csv('test.csv'))
-tweet_raw$Sentiment <- as.factor(tweet_raw$Sentiment)
+library(qdapRegex)
 library(tm)
-stop_word <- read.csv('stop_words.txt')
-tweet_corpus <- Corpus(VectorSource(tweet_raw$Tweet))
-inspect(tweet_corpus[1])
- 
-corpus_clean <- tm_map(tweet_corpus, tolower)
-corpus_clean <- tm_map(corpus_clean, removeNumbers)
-corpus_clean <- tm_map(corpus_clean, removeWords, stopwords())
-corpus_clean <- tm_map(corpus_clean, removePunctuation)
-corpus_clean <- tm_map(corpus_clean, stripWhitespace)
-
-tweet_dtm <- DocumentTermMatrix(corpus_clean)
-
-tweet_raw_train <- tweet_raw[1:11680,]
-tweet_raw_test <- tweet_raw[11681:14601,]
-
-tweet_dtm_train <- tweet_dtm[1:11680,]
-tweet_dtm_test <- tweet_dtm[11681:14601,]
-
-tweet_corpus_train <- corpus_clean[1:11680]
-tweet_corpus_test <- corpus_clean[11681:14601]
-
-
-install.packages('wordcloud')
 library(wordcloud)
+library(gmodels)
+library(e1071)
 
-wordcloud(tweet_corpus_train, min.freq = 40, random.order = F)
-negative <- subset(tweet_raw_train, Sentiment='negative')
-positive <- subset(tweet_raw_train, Sentiment = 'positive')
-neutral <- subset(tweet_raw_train, Sentiment = 'neutral')
+
+train <- read.csv('train.csv')
+test <- read.csv('test.csv')
+stop_words <- as.vector(read.csv('stop_words.txt')$i)
+
+train$Sentiment <- as.factor(train$Sentiment)
+test$Sentiment <- as.factor(test$Sentiment)
+prop.table(table(train$Sentiment))
+prop.table(table(test$Sentiment))
+
+train$Tweet[1:10]
+train$Tweet <- tolower(train$Tweet)
+test$Tweet <- tolower(test$Tweet)
+
+train$Tweet <- rm_hash(rm_tag(rm_url(train$Tweet)))
+test$Tweet <- rm_hash(rm_tag(rm_url(test$Tweet)))
+
+trainCorp <- Corpus(VectorSource(train$Tweet))
+testCorp <- Corpus(VectorSource(test$Tweet))
+
+
+stop_words <- append(stop_words, c('flight', 'usairways','americanair', 'flights','southwestair', 'jetblue'))
+
+
+inspect(CC[1:10])
+CC <- tm_map(trainCorp, removePunctuation)
+CC <- tm_map(CC, removeNumbers)
+CC <- tm_map(CC, removeWords, stop_words)
+CC <- tm_map(CC, stripWhitespace)
+trainCorp <- CC
+
+inspect(CC[1:10])
+CC <- tm_map(testCorp, removePunctuation)
+CC <- tm_map(CC, removeNumbers)
+CC <- tm_map(CC, removeWords, stop_words)
+CC <- tm_map(CC, stripWhitespace)
+testCorp <- CC
+rm(CC)
+
+wordcloud(trainCorp, min.freq = 20, random.order = F)
+wordcloud(testCorp, min.freq = 20, random.order = F)
+
+x <- data.frame(text = sapply(trainCorp, as.character), stringsAsFactors = F)
+train$Tweet <- x$text
+x <- data.frame(text = sapply(testCorp, as.character), stringsAsFactors = F)
+test$Tweet <- x$text
+rm(x)
+
+negative <- subset(train, Sentiment=='negative')
+positive <- subset(train, Sentiment== 'positive')
+neutral <- subset(train, Sentiment == 'neutral')
 
 wordcloud(negative$Tweet, max.words = 70, scale = c(3,0.5), random.order = F)
 wordcloud(positive$Tweet, max.words = 70, scale = c(3,0.5), random.order = F)
 wordcloud(neutral$Tweet, max.words = 70, scale = c(3,0.5), random.order = F)
 
-#remove terms with freq less than 5
-tweet_dict<-findFreqTerms(tweet_dtm_train,  1)
-tweet_train<-DocumentTermMatrix(tweet_corpus_train,list(dictionary=tweet_dict))
-tweet_test<-DocumentTermMatrix(tweet_corpus_test,list(dictionary=tweet_dict))
 
-#naive bayes is trained on categorical data
-#so the repition of words is not important, only their presense
-#We make a function to convert the count to Y/N factor
+trainDTM <- DocumentTermMatrix(trainCorp)
+testDTM <- DocumentTermMatrix(testCorp)
+
 convert_count <- function(x)
 {
   x <- ifelse(x>0,1,0)
@@ -50,12 +71,20 @@ convert_count <- function(x)
   return(x)
 }
 
-tweet_train <- apply(tweet_raw_train, MARGIN = 2, convert_count)
-tweet_test <- apply(tweet_raw_test, MARGIN = 2, convert_count)
+trainDTM <- apply(trainDTM, MARGIN = 2, convert_count)
+testDTM <- apply(testDTM, MARGIN = 2, convert_count)
 
-#library for naive bayes
-library(e1071)
-tweet_classifier <- naiveBayes(as.matrix(tweet_train), tweet_raw_train$Sentiment)
-tweet_test_pred <- predict(tweet_classifier, as.matrix(tweet_test))
 
-CrossTable(x = tweet_raw_test$Sentiment, y= tweet_test_pred, prop.chisq = FALSE, prop.t = FALSE, dnn = c('actual', 'predicted'))
+
+
+start.time <- Sys.time()
+tweet_classifier <- naiveBayes(as.matrix(trainDTM),train$Sentiment)
+total.time <- Sys.time() - start.time
+total.time
+
+start.time <- Sys.time()
+tweet_test_pred <- predict(tweet_classifier, as.matrix(testDTM))
+total.time <- Sys.time() - start.time
+
+
+CrossTable(x = test$Sentiment, y= tweet_test_pred, prop.chisq = FALSE, prop.t = FALSE, dnn = c('actual', 'predicted'))
