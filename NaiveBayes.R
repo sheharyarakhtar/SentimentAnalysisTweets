@@ -25,13 +25,14 @@ trainCorp <- Corpus(VectorSource(train$Tweet))
 testCorp <- Corpus(VectorSource(test$Tweet))
 
 
-stop_words <- append(stop_words, c('flight', 'usairways','americanair', 'flights','southwestair', 'jetblue'))
+stop_words <- append(stop_words, c('flight', 'usairways','americanair', 'flights','southwestair', 'jetblue', stopwords()))
 
 
 inspect(CC[1:10])
 CC <- tm_map(trainCorp, removePunctuation)
 CC <- tm_map(CC, removeNumbers)
 CC <- tm_map(CC, removeWords, stop_words)
+CC <- tm_map(CC, stemDocument)
 CC <- tm_map(CC, stripWhitespace)
 trainCorp <- CC
 
@@ -39,12 +40,13 @@ inspect(CC[1:10])
 CC <- tm_map(testCorp, removePunctuation)
 CC <- tm_map(CC, removeNumbers)
 CC <- tm_map(CC, removeWords, stop_words)
+CC <- tm_map(CC, stemDocument)
 CC <- tm_map(CC, stripWhitespace)
 testCorp <- CC
 rm(CC)
 
-wordcloud(trainCorp, min.freq = 20, random.order = F)
-wordcloud(testCorp, min.freq = 20, random.order = F)
+wordcloud(trainCorp, min.freq = 10, random.order = F)
+wordcloud(testCorp, min.freq = 5, random.order = F)
 
 x <- data.frame(text = sapply(trainCorp, as.character), stringsAsFactors = F)
 train$Tweet <- x$text
@@ -56,9 +58,9 @@ negative <- subset(train, Sentiment=='negative')
 positive <- subset(train, Sentiment== 'positive')
 neutral <- subset(train, Sentiment == 'neutral')
 
-wordcloud(negative$Tweet, max.words = 70, scale = c(3,0.5), random.order = F)
-wordcloud(positive$Tweet, max.words = 70, scale = c(3,0.5), random.order = F)
-wordcloud(neutral$Tweet, max.words = 70, scale = c(3,0.5), random.order = F)
+wordcloud(negative$Tweet, max.words = 70, random.order = F)
+wordcloud(positive$Tweet, max.words = 100, random.order = F)
+wordcloud(neutral$Tweet, max.words = 70, random.order = F)
 
 
 trainDTM <- DocumentTermMatrix(trainCorp)
@@ -75,16 +77,11 @@ trainDTM <- apply(trainDTM, MARGIN = 2, convert_count)
 testDTM <- apply(testDTM, MARGIN = 2, convert_count)
 
 
-
-
 start.time <- Sys.time()
 tweet_classifier <- naiveBayes(as.matrix(trainDTM),train$Sentiment)
+tweet_test_pred <- predict(tweet_classifier, as.matrix(testDTM))
+
 total.time <- Sys.time() - start.time
 total.time
-
-start.time <- Sys.time()
-tweet_test_pred <- predict(tweet_classifier, as.matrix(testDTM))
-total.time <- Sys.time() - start.time
-
 
 CrossTable(x = test$Sentiment, y= tweet_test_pred, prop.chisq = FALSE, prop.t = FALSE, dnn = c('actual', 'predicted'))
